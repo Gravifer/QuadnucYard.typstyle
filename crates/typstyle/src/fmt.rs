@@ -11,7 +11,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use itertools::Itertools;
 use log::{debug, error, info, warn};
-use typst_syntax::Source;
+use typst_syntax::{Source, is_newline};
 use typstyle_core::{Config, Typstyle, format_ast};
 use walkdir::{DirEntry, WalkDir};
 
@@ -232,15 +232,15 @@ impl LineEnding {
     /// Preserve CRLF only when every newline in the input uses CRLF.
     /// Inputs without newlines or with mixed line endings fall back to LF.
     fn detect(content: &str) -> Self {
-        let bytes = content.as_bytes();
+        let mut chars = content.chars().peekable();
         let mut saw_crlf = false;
 
-        for (index, byte) in bytes.iter().enumerate() {
-            if *byte == b'\n' {
-                if index == 0 || bytes[index - 1] != b'\r' {
-                    return Self::Lf;
-                }
+        while let Some(ch) = chars.next() {
+            if ch == '\r' && chars.peek() == Some(&'\n') {
+                chars.next();
                 saw_crlf = true;
+            } else if is_newline(ch) {
+                return Self::Lf;
             }
         }
 
@@ -252,19 +252,29 @@ impl LineEnding {
     }
 
     fn apply(self, content: String) -> String {
-        match self {
-            Self::Lf => content,
-            Self::CrLf => {
-                let mut converted = String::with_capacity(content.len());
-                for ch in content.chars() {
-                    if ch == '\n' && !converted.ends_with('\r') {
-                        converted.push('\r');
-                    }
-                    converted.push(ch);
+        if self == Self::Lf && content.chars().all(|ch| ch == '\n' || !is_newline(ch)) {
+            return content;
+        }
+
+        let replacement = match self {
+            Self::Lf => "\n",
+            Self::CrLf => "\r\n",
+        };
+        let mut converted = String::with_capacity(content.len());
+        let mut chars = content.chars().peekable();
+
+        while let Some(ch) = chars.next() {
+            if is_newline(ch) {
+                if ch == '\r' && chars.peek() == Some(&'\n') {
+                    chars.next();
                 }
-                converted
+                converted.push_str(replacement);
+            } else {
+                converted.push(ch);
             }
         }
+
+        converted
     }
 }
 

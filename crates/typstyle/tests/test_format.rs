@@ -197,6 +197,38 @@ fn test_mixed_line_endings_normalize_to_lf() {
 }
 
 #[test]
+fn test_mixed_crlf_and_cr_line_endings_normalize_to_lf() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1\r");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\n#let b = 1\n");
+}
+
+#[test]
+fn test_typst_line_endings_normalize_to_lf() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", "#let a  =  0\u{2028}#let b  =  1\r\n");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\n#let b = 1\n");
+}
+
+#[test]
 fn test_two_0() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", "#let a = 0\n");
