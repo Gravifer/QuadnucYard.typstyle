@@ -58,13 +58,13 @@ impl CliArguments {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
 pub enum LineEndingMode {
-    /// Use canonical LF line endings.
+    /// Use formatter output without line-ending post-processing.
     #[default]
     Lf,
-    /// Preserve CRLF only when every ASCII line ending uses CRLF.
+    /// Restore CRLF only when every ASCII line ending uses CRLF.
     #[value(name = "crlf-preserve")]
     CrlfPreserve,
-    /// Follow the first ASCII line ending for structural trivia only.
+    /// Restore CRLF in trivia when the first ASCII line ending is CRLF.
     #[value(name = "first-line-structural")]
     FirstLineStructural,
 }

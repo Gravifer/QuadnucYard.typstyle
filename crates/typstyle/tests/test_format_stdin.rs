@@ -78,6 +78,33 @@ fn test_first_line_structural_stdin_only_converts_trivia() {
 }
 
 #[test]
+fn test_line_ending_policies_leave_bare_cr_unchanged() {
+    let space = Workspace::new();
+    let input = b"#let a  =  0\r\n#let b  =  1\r#let c  =  2";
+    let cases: [(&[&str], &[u8]); 3] = [
+        (&[], b"#let a = 0\n#let b = 1\r#let c = 2\n"),
+        (
+            &["--line-ending=crlf-preserve"],
+            b"#let a = 0\n#let b = 1\r#let c = 2\n",
+        ),
+        (
+            &["--line-ending=first-line-structural"],
+            b"#let a = 0\r\n#let b = 1\r#let c = 2\r\n",
+        ),
+    ];
+
+    for (args, expected) in cases {
+        let mut command = space.cli();
+        command.args(args);
+        let (_, output) = command.pass_stdin(input).spawn_with_info(None);
+
+        assert!(output.status.success());
+        assert_eq!(output.stdout, expected);
+        assert!(output.stderr.is_empty());
+    }
+}
+
+#[test]
 fn test_crlf_preserve_stdin_check_unchanged() {
     let space = Workspace::new();
 

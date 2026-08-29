@@ -271,7 +271,7 @@ fn test_crlf_preserve_mixed_line_endings_fall_back_to_lf() {
 }
 
 #[test]
-fn test_crlf_preserve_mixed_crlf_and_cr_fall_back_to_lf() {
+fn test_crlf_preserve_with_cr_at_eof_uses_formatter_output() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1\r");
 

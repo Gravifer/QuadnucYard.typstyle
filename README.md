@@ -73,14 +73,17 @@ Log Levels:
   -q, --quiet    Print diagnostics, but nothing else
 ```
 
-Line-ending policies apply to file and stdin input in every output mode:
+Line-ending policies post-process formatted file and stdin output in every
+output mode:
 
-- `lf` keeps the formatter's canonical LF output and is the default.
+- `lf` applies no line-ending post-processing and is the default.
 - `crlf-preserve` restores CRLF only when every ASCII line ending in the input
-  uses CRLF; otherwise it falls back to LF.
-- `first-line-structural` follows the first ASCII line ending for structural
-  whitespace and comments. Newlines inside strings, raw blocks, and other
-  non-trivia tokens are not converted.
+  uses CRLF; otherwise it leaves the formatter output unchanged.
+- `first-line-structural` converts bare LF in structural whitespace and
+  comments to CRLF when the first ASCII line ending is CRLF. Other formatter
+  output, including existing bare CR and non-trivia tokens, is not
+  post-processed. The formatter may already have normalized line endings in
+  strings and raw blocks before this policy runs.
 
 #### Examples
 
