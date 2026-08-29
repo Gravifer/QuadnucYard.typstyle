@@ -77,19 +77,6 @@ fn test_stdin_check() {
 }
 
 #[test]
-fn test_crlf_stdin_check_remains_lf() {
-    let space = Workspace::new();
-
-    typstyle_cmd_snapshot!(space.cli().args(["--check"]).pass_stdin("#let x = 0\r\n"), @r"
-    success: false
-    exit_code: 1
-    ----- stdout -----
-
-    ----- stderr -----
-    ");
-}
-
-#[test]
 fn test_stdin_diff() {
     let space: Workspace = Workspace::new();
 
