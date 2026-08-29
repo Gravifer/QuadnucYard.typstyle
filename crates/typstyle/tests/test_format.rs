@@ -103,25 +103,9 @@ fn test_one_check_quiet() {
 }
 
 #[test]
-fn test_crlf_check_unchanged() {
+fn test_default_lf_check_rejects_crlf() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", b"#let a = 0\r\n");
-
-    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--check"]), @r"
-    success: true
-    exit_code: 0
-    ----- stdout -----
-
-    ----- stderr -----
-    ");
-
-    assert!(space.all_unmodified());
-}
-
-#[test]
-fn test_crlf_check_formatted_content() {
-    let mut space = Workspace::new();
-    space.write_tracked("a.typ", b"#let a  =  0\r\n");
 
     typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--check"]), @r"
     success: false
@@ -136,11 +120,15 @@ fn test_crlf_check_formatted_content() {
 }
 
 #[test]
-fn test_crlf_diff_unchanged() {
+fn test_crlf_preserve_check_unchanged() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", b"#let a = 0\r\n");
 
-    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--diff"]), @r"
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--check",
+        "--line-ending=crlf-preserve",
+    ]), @r"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -152,11 +140,56 @@ fn test_crlf_diff_unchanged() {
 }
 
 #[test]
-fn test_crlf_inplace_preserves_line_endings() {
+fn test_crlf_preserve_check_formatted_content() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n");
+
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--check",
+        "--line-ending=crlf-preserve",
+    ]), @r"
+    success: false
+    exit_code: 1
+    ----- stdout -----
+    Would reformat: a.typ
+
+    ----- stderr -----
+    ");
+
+    assert!(space.all_unmodified());
+}
+
+#[test]
+fn test_crlf_preserve_diff_unchanged() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a = 0\r\n");
+
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--diff",
+        "--line-ending=crlf-preserve",
+    ]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert!(space.all_unmodified());
+}
+
+#[test]
+fn test_crlf_preserve_inplace_preserves_line_endings() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1");
 
-    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--inplace",
+        "--line-ending=crlf-preserve",
+    ]), @r"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -168,7 +201,7 @@ fn test_crlf_inplace_preserves_line_endings() {
 }
 
 #[test]
-fn test_crlf_file_output_remains_lf() {
+fn test_default_lf_file_output_remains_lf() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", b"#let a  =  0\r\n");
 
@@ -181,11 +214,52 @@ fn test_crlf_file_output_remains_lf() {
 }
 
 #[test]
-fn test_mixed_line_endings_fall_back_to_lf_output() {
+fn test_explicit_lf_inplace_normalizes_crlf() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1");
+
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--inplace",
+        "--line-ending=lf",
+    ]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\n#let b = 1\n");
+}
+
+#[test]
+fn test_crlf_preserve_file_output_uses_crlf() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n");
+
+    let output = space
+        .cli()
+        .args(["a.typ", "--line-ending=crlf-preserve"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"#let a = 0\r\n");
+    assert!(output.stderr.is_empty());
+    assert!(space.all_unmodified());
+}
+
+#[test]
+fn test_crlf_preserve_mixed_line_endings_fall_back_to_lf() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1\n");
 
-    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--inplace",
+        "--line-ending=crlf-preserve",
+    ]), @r"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -197,11 +271,15 @@ fn test_mixed_line_endings_fall_back_to_lf_output() {
 }
 
 #[test]
-fn test_mixed_crlf_and_cr_fall_back_to_lf_output() {
+fn test_crlf_preserve_mixed_crlf_and_cr_fall_back_to_lf() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1\r");
 
-    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--inplace",
+        "--line-ending=crlf-preserve",
+    ]), @r"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -213,14 +291,18 @@ fn test_mixed_crlf_and_cr_fall_back_to_lf_output() {
 }
 
 #[test]
-fn test_crlf_multiline_literals_preserve_line_endings() {
+fn test_crlf_preserve_multiline_literals() {
     let mut space = Workspace::new();
     space.write_tracked(
         "a.typ",
         b"#let string  =  \"a\r\nb\"\r\n#let raw  =  ```a\r\nb```\r\n",
     );
 
-    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--inplace",
+        "--line-ending=crlf-preserve",
+    ]), @r"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -235,11 +317,15 @@ fn test_crlf_multiline_literals_preserve_line_endings() {
 }
 
 #[test]
-fn test_non_ascii_newline_in_string_is_not_rewritten() {
+fn test_crlf_preserve_does_not_rewrite_non_ascii_newline() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", "#let value  =  \"a\u{2028}b\"\r\n");
 
-    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--inplace",
+        "--line-ending=crlf-preserve",
+    ]), @r"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -250,6 +336,32 @@ fn test_non_ascii_newline_in_string_is_not_rewritten() {
     assert_eq!(
         space.read_bytes("a.typ"),
         "#let value = \"a\u{2028}b\"\r\n".as_bytes()
+    );
+}
+
+#[test]
+fn test_first_line_structural_inplace_only_converts_trivia() {
+    let mut space = Workspace::new();
+    space.write_tracked(
+        "a.typ",
+        b"/* block\r\ncomment */\r\n#let string  =  \"a\r\nb\"\r\n#let raw  =  ```a\r\nb```\r\n",
+    );
+
+    typstyle_cmd_snapshot!(space.cli().args([
+        "a.typ",
+        "--inplace",
+        "--line-ending=first-line-structural",
+    ]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(
+        space.read_bytes("a.typ"),
+        b"/* block\r\ncomment */\r\n#let string = \"a\nb\"\r\n#let raw = ```a\nb```\r\n"
     );
 }
 

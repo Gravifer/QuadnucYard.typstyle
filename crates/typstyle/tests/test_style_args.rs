@@ -127,3 +127,35 @@ fn test_wrap_text_does_not_consume_input_path() {
     ----- stderr -----
     ");
 }
+
+#[test]
+fn test_line_ending_help_lists_modes_and_default() {
+    let space = Workspace::new();
+    let output = space.cli().arg("--help").output().unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    assert!(output.status.success());
+    assert!(stdout.contains("--line-ending <LINE_ENDING>"));
+    assert!(stdout.contains("[default: lf]"));
+    assert!(stdout.contains("Possible values:"));
+    assert!(stdout.contains("- lf:"));
+    assert!(stdout.contains("- crlf-preserve:"));
+    assert!(stdout.contains("- first-line-structural:"));
+}
+
+#[test]
+fn test_invalid_line_ending_mode() {
+    let space = Workspace::new();
+
+    typstyle_cmd_snapshot!(space.cli().args(["--line-ending=auto"]), @r"
+    success: false
+    exit_code: 2
+    ----- stdout -----
+
+    ----- stderr -----
+    error: invalid value 'auto' for '--line-ending <LINE_ENDING>'
+      [possible values: lf, crlf-preserve, first-line-structural]
+
+    For more information, try '--help'.
+    ");
+}

@@ -17,14 +17,14 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     ExitStatus,
-    cli::{CliArguments, DebugArgs, StyleArgs},
+    cli::{CliArguments, DebugArgs, LineEndingMode, StyleArgs},
     diff::SourceDiff,
     fs,
 };
 
 mod line_endings;
 
-use line_endings::LineEnding;
+use line_endings::{apply_crlf_preserve, apply_first_line_structural};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FormatMode {
@@ -173,14 +173,9 @@ fn format_one(
 ) -> Result<FormatResult> {
     let use_stdout = !args.inplace && !args.check && !args.diff;
     let unformatted = get_input(input)?;
-    let line_ending =
-        (!use_stdout && input.is_some()).then(|| LineEnding::detect_consistent(&unformatted));
 
     let res = format_debug(&unformatted, typstyle, &args.debug);
-    let res = match line_ending {
-        Some(line_ending) => res.apply_line_ending(&unformatted, line_ending),
-        None => res,
-    };
+    let res = res.apply_line_ending(&unformatted, args.line_ending);
     match &res {
         FormatResult::Formatted(res) => {
             if args.inplace {
@@ -228,11 +223,15 @@ enum FormatResult {
 }
 
 impl FormatResult {
-    fn apply_line_ending(self, original: &str, line_ending: LineEnding) -> Self {
+    fn apply_line_ending(self, original: &str, mode: LineEndingMode) -> Self {
         let Self::Formatted(formatted) = self else {
             return self;
         };
-        let formatted = line_ending.apply(formatted);
+        let formatted = match mode {
+            LineEndingMode::Lf => formatted,
+            LineEndingMode::CrlfPreserve => apply_crlf_preserve(original, formatted),
+            LineEndingMode::FirstLineStructural => apply_first_line_structural(original, formatted),
+        };
 
         if formatted == original {
             Self::Unchanged

@@ -1,7 +1,7 @@
 use typst_syntax::{Source, SyntaxNode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum LineEnding {
+enum LineEnding {
     Lf,
     CrLf,
 }
@@ -9,7 +9,7 @@ pub(super) enum LineEnding {
 impl LineEnding {
     /// Preserve CRLF only when every ASCII newline in the input uses CRLF.
     /// Inputs without newlines or with mixed line endings fall back to LF.
-    pub(super) fn detect_consistent(content: &str) -> Self {
+    fn detect_consistent(content: &str) -> Self {
         let bytes = content.as_bytes();
         let mut saw_crlf = false;
         let mut index = 0;
@@ -43,7 +43,7 @@ impl LineEnding {
         Self::Lf
     }
 
-    pub(super) fn apply(self, content: String) -> String {
+    fn apply(self, content: String) -> String {
         match self {
             Self::Lf => content,
             Self::CrLf => {
@@ -55,9 +55,11 @@ impl LineEnding {
     }
 }
 
-// This tested alternative is intentionally disconnected from the default conservative policy.
-#[allow(dead_code)]
-pub(super) fn apply_first_line_ending_to_trivia(original: &str, formatted: String) -> String {
+pub(super) fn apply_crlf_preserve(original: &str, formatted: String) -> String {
+    LineEnding::detect_consistent(original).apply(formatted)
+}
+
+pub(super) fn apply_first_line_structural(original: &str, formatted: String) -> String {
     match LineEnding::detect_first(original) {
         LineEnding::Lf => formatted,
         LineEnding::CrLf => {
@@ -120,13 +122,13 @@ mod tests {
     #[test]
     fn crlf_conversion_only_rewrites_bare_lf() {
         let content = "a\nb\r\nc\rd\u{000b}e\u{000c}f\u{0085}g\u{2028}h\u{2029}i";
-        let converted = LineEnding::CrLf.apply(content.to_owned());
+        let converted = apply_crlf_preserve("a\r\nb\r\n", content.to_owned());
 
         assert_eq!(
             converted,
             "a\r\nb\r\nc\rd\u{000b}e\u{000c}f\u{0085}g\u{2028}h\u{2029}i"
         );
-        assert_eq!(LineEnding::Lf.apply(content.to_owned()), content);
+        assert_eq!(apply_crlf_preserve("a\nb\n", content.to_owned()), content);
     }
 
     #[test]
@@ -155,8 +157,7 @@ mod tests {
             "#let separator = \"a\u{2028}b\"\n",
         );
 
-        let converted =
-            apply_first_line_ending_to_trivia("first\r\nsecond\n", formatted.to_owned());
+        let converted = apply_first_line_structural("first\r\nsecond\n", formatted.to_owned());
 
         assert_eq!(
             converted,
@@ -174,7 +175,7 @@ mod tests {
         let formatted = "#let value = \"a\nb\"\n".to_owned();
 
         assert_eq!(
-            apply_first_line_ending_to_trivia("first\nsecond\r\n", formatted.clone()),
+            apply_first_line_structural("first\nsecond\r\n", formatted.clone()),
             formatted
         );
     }

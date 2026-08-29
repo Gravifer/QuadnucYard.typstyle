@@ -1,6 +1,7 @@
 mod common;
 
 use common::{Workspace, typstyle_cmd_snapshot};
+use insta_cmd::{Spawn, SpawnExt};
 
 const STDIN: &str = "#let  x  = (1+2)";
 
@@ -27,6 +28,66 @@ fn test_stdin() {
     exit_code: 0
     ----- stdout -----
     #let x = (1 + 2)
+
+    ----- stderr -----
+    ");
+}
+
+#[test]
+fn test_default_lf_stdin_normalizes_crlf() {
+    let space = Workspace::new();
+    let mut command = space.cli();
+    let (_, output) = command
+        .pass_stdin(b"#let value  =  1\r\n")
+        .spawn_with_info(None);
+
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"#let value = 1\n");
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn test_crlf_preserve_stdin_uses_crlf() {
+    let space = Workspace::new();
+    let mut command = space.cli();
+    command.arg("--line-ending=crlf-preserve");
+    let (_, output) = command
+        .pass_stdin(b"#let value  =  1\r\n")
+        .spawn_with_info(None);
+
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"#let value = 1\r\n");
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn test_first_line_structural_stdin_only_converts_trivia() {
+    let space = Workspace::new();
+    let mut command = space.cli();
+    command.arg("--line-ending=first-line-structural");
+    let (_, output) = command
+        .pass_stdin(b"#let string  =  \"a\r\nb\"\r\n#let value  =  1\r\n")
+        .spawn_with_info(None);
+
+    assert!(output.status.success());
+    assert_eq!(
+        output.stdout,
+        b"#let string = \"a\nb\"\r\n#let value = 1\r\n"
+    );
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn test_crlf_preserve_stdin_check_unchanged() {
+    let space = Workspace::new();
+
+    typstyle_cmd_snapshot!(space
+        .cli()
+        .args(["--check", "--line-ending=crlf-preserve"])
+        .pass_stdin(b"#let value = 1\r\n"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
 
     ----- stderr -----
     ");

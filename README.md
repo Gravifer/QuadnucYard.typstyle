@@ -53,6 +53,7 @@ Options:
   -i, --inplace  Format the file in place
       --check    Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with a non-zero status code if formatting is required
       --diff     Run in 'diff' mode. Shows unified diff of what formatting changes would be made. Exits with 0 if input is formatted correctly. Exits with a non-zero status code if formatting is required
+      --line-ending <LINE_ENDING>  Line-ending policy for formatted source output [default: lf] [possible values: lf, crlf-preserve, first-line-structural]
   -h, --help     Print help
   -V, --version  Print version
 
@@ -71,6 +72,15 @@ Log Levels:
   -v, --verbose  Enable verbose logging
   -q, --quiet    Print diagnostics, but nothing else
 ```
+
+Line-ending policies apply to file and stdin input in every output mode:
+
+- `lf` keeps the formatter's canonical LF output and is the default.
+- `crlf-preserve` restores CRLF only when every ASCII line ending in the input
+  uses CRLF; otherwise it falls back to LF.
+- `first-line-structural` follows the first ASCII line ending for structural
+  whitespace and comments. Newlines inside strings, raw blocks, and other
+  non-trivia tokens are not converted.
 
 #### Examples
 

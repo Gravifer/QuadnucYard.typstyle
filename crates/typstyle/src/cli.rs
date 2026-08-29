@@ -29,6 +29,10 @@ pub struct CliArguments {
     #[arg(long, default_value_t = false, global = true, conflicts_with = "check")]
     pub diff: bool,
 
+    /// Line-ending policy for formatted source output.
+    #[arg(long, value_enum, default_value_t = LineEndingMode::Lf)]
+    pub line_ending: LineEndingMode,
+
     #[command(flatten, next_help_heading = "Format Configuration")]
     pub style: StyleArgs,
 
@@ -50,6 +54,19 @@ impl CliArguments {
             .exit();
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
+pub enum LineEndingMode {
+    /// Use canonical LF line endings.
+    #[default]
+    Lf,
+    /// Preserve CRLF only when every ASCII line ending uses CRLF.
+    #[value(name = "crlf-preserve")]
+    CrlfPreserve,
+    /// Follow the first ASCII line ending for structural trivia only.
+    #[value(name = "first-line-structural")]
+    FirstLineStructural,
 }
 
 #[derive(Subcommand)]
