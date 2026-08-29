@@ -53,7 +53,7 @@ Options:
   -i, --inplace  Format the file in place
       --check    Run in 'check' mode. Exits with 0 if input is formatted correctly. Exits with a non-zero status code if formatting is required
       --diff     Run in 'diff' mode. Shows unified diff of what formatting changes would be made. Exits with 0 if input is formatted correctly. Exits with a non-zero status code if formatting is required
-      --line-ending <LINE_ENDING>  Line-ending policy for formatted source output [default: lf] [possible values: lf, crlf-preserve, first-line-structural]
+      --line-ending <LINE_ENDING>  Line-ending policy for formatted source output [default: lf] [possible values: lf, crlf-preserve]
   -h, --help     Print help
   -V, --version  Print version
 
@@ -73,17 +73,16 @@ Log Levels:
   -q, --quiet    Print diagnostics, but nothing else
 ```
 
-Line-ending policies post-process formatted file and stdin output in every
-output mode:
+The selected line-ending policy is applied to the candidate formatted source
+before it is written, printed, checked, or diffed. Diff control lines keep
+their normal LF output:
 
 - `lf` applies no line-ending post-processing and is the default.
-- `crlf-preserve` restores CRLF only when every ASCII line ending in the input
-  uses CRLF; otherwise it leaves the formatter output unchanged.
-- `first-line-structural` converts bare LF in structural whitespace and
-  comments to CRLF when the first ASCII line ending is CRLF. Other formatter
-  output, including existing bare CR and non-trivia tokens, is not
-  post-processed. The formatter may already have normalized line endings in
-  strings and raw blocks before this policy runs.
+- `crlf-preserve` restores CRLF throughout the formatted output only when the
+  input contains at least one CRLF and has no bare LF or bare CR. Otherwise,
+  including when the input has no line endings, it leaves the formatter output
+  unchanged. Restoration applies to multiline strings and raw blocks as well
+  as structural whitespace.
 
 #### Examples
 

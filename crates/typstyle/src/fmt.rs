@@ -24,7 +24,7 @@ use crate::{
 
 mod line_endings;
 
-use line_endings::{apply_crlf_preserve, apply_first_line_structural};
+use line_endings::apply_crlf_preserve;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FormatMode {
@@ -230,7 +230,6 @@ impl FormatResult {
         let formatted = match mode {
             LineEndingMode::Lf => formatted,
             LineEndingMode::CrlfPreserve => apply_crlf_preserve(original, formatted),
-            LineEndingMode::FirstLineStructural => apply_first_line_structural(original, formatted),
         };
 
         if formatted == original {

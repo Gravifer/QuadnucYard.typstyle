@@ -140,7 +140,6 @@ fn test_line_ending_help_lists_modes_and_default() {
     assert!(stdout.contains("Possible values:"));
     assert!(stdout.contains("- lf:"));
     assert!(stdout.contains("- crlf-preserve:"));
-    assert!(stdout.contains("- first-line-structural:"));
 }
 
 #[test]
@@ -154,7 +153,7 @@ fn test_invalid_line_ending_mode() {
 
     ----- stderr -----
     error: invalid value 'auto' for '--line-ending <LINE_ENDING>'
-      [possible values: lf, crlf-preserve, first-line-structural]
+      [possible values: lf, crlf-preserve]
 
     For more information, try '--help'.
     ");

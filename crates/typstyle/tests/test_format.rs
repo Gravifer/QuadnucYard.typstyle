@@ -198,6 +198,15 @@ fn test_crlf_preserve_inplace_preserves_line_endings() {
     ");
 
     assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\r\n#let b = 1\r\n");
+
+    let check = space
+        .cli()
+        .args(["a.typ", "--check", "--line-ending=crlf-preserve"])
+        .output()
+        .unwrap();
+    assert!(check.status.success());
+    assert!(check.stdout.is_empty());
+    assert!(check.stderr.is_empty());
 }
 
 #[test]
@@ -336,32 +345,6 @@ fn test_crlf_preserve_does_not_rewrite_non_ascii_newline() {
     assert_eq!(
         space.read_bytes("a.typ"),
         "#let value = \"a\u{2028}b\"\r\n".as_bytes()
-    );
-}
-
-#[test]
-fn test_first_line_structural_inplace_only_converts_trivia() {
-    let mut space = Workspace::new();
-    space.write_tracked(
-        "a.typ",
-        b"/* block\r\ncomment */\r\n#let string  =  \"a\r\nb\"\r\n#let raw  =  ```a\r\nb```\r\n",
-    );
-
-    typstyle_cmd_snapshot!(space.cli().args([
-        "a.typ",
-        "--inplace",
-        "--line-ending=first-line-structural",
-    ]), @r"
-    success: true
-    exit_code: 0
-    ----- stdout -----
-
-    ----- stderr -----
-    ");
-
-    assert_eq!(
-        space.read_bytes("a.typ"),
-        b"/* block\r\ncomment */\r\n#let string = \"a\nb\"\r\n#let raw = ```a\nb```\r\n"
     );
 }
 

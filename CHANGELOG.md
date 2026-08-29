@@ -2,13 +2,11 @@
 
 ## Unreleased
 
-- Add `--line-ending=lf|crlf-preserve|first-line-structural` to select the CLI
-  output line-ending policy. The default leaves formatter output unchanged;
-  `crlf-preserve` preserves uniformly CRLF input, while
-  `first-line-structural` restores CRLF for bare LF in structural trivia when
-  the first ASCII line ending is CRLF. Neither policy post-processes bare CR or
-  non-trivia formatter output; strings and raw content may already have been
-  normalized by the formatter.
+- Add `--line-ending=lf|crlf-preserve` to select the formatted-source
+  line-ending policy. The default leaves formatter output unchanged. `crlf-preserve`
+  restores CRLF throughout the formatted output only when the input contains
+  at least one CRLF and has no bare LF or bare CR; otherwise it leaves formatter
+  output unchanged.
 
 ## v0.15.1 - [2026-07-28]
 

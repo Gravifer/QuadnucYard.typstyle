@@ -1,5 +1,3 @@
-use typst_syntax::{Source, SyntaxNode};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LineEnding {
     Lf,
@@ -8,7 +6,7 @@ enum LineEnding {
 
 impl LineEnding {
     /// Preserve CRLF only when every ASCII newline in the input uses CRLF.
-    /// Inputs without newlines or with mixed line endings fall back to LF.
+    /// Inputs without newlines or with mixed line endings retain formatter output.
     fn detect_consistent(content: &str) -> Self {
         let bytes = content.as_bytes();
         let mut saw_crlf = false;
@@ -28,21 +26,6 @@ impl LineEnding {
         if saw_crlf { Self::CrLf } else { Self::Lf }
     }
 
-    fn detect_first(content: &str) -> Self {
-        let bytes = content.as_bytes();
-        let mut index = 0;
-
-        while index < bytes.len() {
-            match bytes[index] {
-                b'\r' if bytes.get(index + 1) == Some(&b'\n') => return Self::CrLf,
-                b'\r' | b'\n' => return Self::Lf,
-                _ => index += 1,
-            }
-        }
-
-        Self::Lf
-    }
-
     fn apply(self, content: String) -> String {
         match self {
             Self::Lf => content,
@@ -57,32 +40,6 @@ impl LineEnding {
 
 pub(super) fn apply_crlf_preserve(original: &str, formatted: String) -> String {
     LineEnding::detect_consistent(original).apply(formatted)
-}
-
-pub(super) fn apply_first_line_structural(original: &str, formatted: String) -> String {
-    match LineEnding::detect_first(original) {
-        LineEnding::Lf => formatted,
-        LineEnding::CrLf => {
-            let source = Source::detached(formatted);
-            let mut converted = String::with_capacity(source.root().len());
-            push_node_text(source.root(), &mut converted);
-            converted
-        }
-    }
-}
-
-fn push_node_text(node: &SyntaxNode, output: &mut String) {
-    let mut children = node.children();
-    if let Some(first) = children.next() {
-        push_node_text(first, output);
-        for child in children {
-            push_node_text(child, output);
-        }
-    } else if node.kind().is_trivia() {
-        push_crlf(output, node.leaf_text());
-    } else {
-        output.push_str(node.leaf_text());
-    }
 }
 
 fn push_crlf(output: &mut String, content: &str) {
@@ -132,51 +89,20 @@ mod tests {
     }
 
     #[test]
-    fn detects_first_ascii_physical_line_ending() {
-        assert_eq!(LineEnding::detect_first("a\r\nb\n"), LineEnding::CrLf);
-        assert_eq!(LineEnding::detect_first("a\nb\r\n"), LineEnding::Lf);
-        assert_eq!(LineEnding::detect_first("a\rb\r\n"), LineEnding::Lf);
-        assert_eq!(LineEnding::detect_first("no newline"), LineEnding::Lf);
+    fn crlf_preserve_is_idempotent_across_detection_branches() {
+        let cases = [
+            ("a\r\nb\r\n", "a\nb\n"),
+            ("a\nb\n", "a\nb\n"),
+            ("a\r\nb\n", "a\nb\n"),
+            ("a\r\nb\r", "a\nb\r"),
+            ("no newline", "no newline\n"),
+        ];
 
-        assert_eq!(
-            LineEnding::detect_first("a\u{000b}\u{000c}\u{0085}\u{2028}\u{2029}\r\nb"),
-            LineEnding::CrLf
-        );
-        assert_eq!(
-            LineEnding::detect_first("a\u{000b}\u{000c}\u{0085}\u{2028}\u{2029}b"),
-            LineEnding::Lf
-        );
-    }
+        for &(original, formatted) in &cases {
+            let once = apply_crlf_preserve(original, formatted.to_owned());
+            let twice = apply_crlf_preserve(&once, once.clone());
 
-    #[test]
-    fn first_crlf_strategy_only_rewrites_trivia() {
-        let formatted = concat!(
-            "/* block\ncomment */\n",
-            "#let string = \"a\nb\"\n",
-            "#let raw = ```a\nb```\n",
-            "#let separator = \"a\u{2028}b\"\n",
-        );
-
-        let converted = apply_first_line_structural("first\r\nsecond\n", formatted.to_owned());
-
-        assert_eq!(
-            converted,
-            concat!(
-                "/* block\r\ncomment */\r\n",
-                "#let string = \"a\nb\"\r\n",
-                "#let raw = ```a\nb```\r\n",
-                "#let separator = \"a\u{2028}b\"\r\n",
-            )
-        );
-    }
-
-    #[test]
-    fn first_lf_strategy_is_identity() {
-        let formatted = "#let value = \"a\nb\"\n".to_owned();
-
-        assert_eq!(
-            apply_first_line_structural("first\nsecond\r\n", formatted.clone()),
-            formatted
-        );
+            assert_eq!(once, twice);
+        }
     }
 }

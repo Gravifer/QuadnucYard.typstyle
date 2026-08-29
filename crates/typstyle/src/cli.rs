@@ -61,12 +61,9 @@ pub enum LineEndingMode {
     /// Use formatter output without line-ending post-processing.
     #[default]
     Lf,
-    /// Restore CRLF only when every ASCII line ending uses CRLF.
+    /// Restore CRLF only when the input contains CRLF and no bare LF or CR.
     #[value(name = "crlf-preserve")]
     CrlfPreserve,
-    /// Restore CRLF in trivia when the first ASCII line ending is CRLF.
-    #[value(name = "first-line-structural")]
-    FirstLineStructural,
 }
 
 #[derive(Subcommand)]
