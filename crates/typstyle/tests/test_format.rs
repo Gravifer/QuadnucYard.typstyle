@@ -103,6 +103,100 @@ fn test_one_check_quiet() {
 }
 
 #[test]
+fn test_crlf_check_unchanged() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a = 0\r\n");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--check"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert!(space.all_unmodified());
+}
+
+#[test]
+fn test_crlf_check_formatted_content() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--check"]), @r"
+    success: false
+    exit_code: 1
+    ----- stdout -----
+    Would reformat: a.typ
+
+    ----- stderr -----
+    ");
+
+    assert!(space.all_unmodified());
+}
+
+#[test]
+fn test_crlf_diff_unchanged() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a = 0\r\n");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--diff"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert!(space.all_unmodified());
+}
+
+#[test]
+fn test_crlf_inplace_preserves_line_endings() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\r\n#let b = 1\r\n");
+}
+
+#[test]
+fn test_crlf_file_output_remains_lf() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n");
+
+    let output = space.cli().arg("a.typ").output().unwrap();
+
+    assert!(output.status.success());
+    assert_eq!(output.stdout, b"#let a = 0\n");
+    assert!(output.stderr.is_empty());
+    assert!(space.all_unmodified());
+}
+
+#[test]
+fn test_mixed_line_endings_normalize_to_lf() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1\n");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\n#let b = 1\n");
+}
+
+#[test]
 fn test_two_0() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", "#let a = 0\n");

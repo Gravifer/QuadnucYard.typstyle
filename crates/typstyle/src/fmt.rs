@@ -169,8 +169,13 @@ fn format_one(
 ) -> Result<FormatResult> {
     let use_stdout = !args.inplace && !args.check && !args.diff;
     let unformatted = get_input(input)?;
+    let line_ending = if use_stdout {
+        LineEnding::Lf
+    } else {
+        input.map_or(LineEnding::Lf, |_| LineEnding::detect(&unformatted))
+    };
 
-    let res = format_debug(&unformatted, typstyle, &args.debug);
+    let res = format_debug(&unformatted, typstyle, &args.debug, line_ending);
     match &res {
         FormatResult::Formatted(res) => {
             if args.inplace {
@@ -217,7 +222,58 @@ enum FormatResult {
     Erroneous,
 }
 
-fn format_debug(content: &str, typstyle: &Typstyle, args: &DebugArgs) -> FormatResult {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LineEnding {
+    Lf,
+    CrLf,
+}
+
+impl LineEnding {
+    /// Preserve CRLF only when every newline in the input uses CRLF.
+    /// Inputs without newlines or with mixed line endings fall back to LF.
+    fn detect(content: &str) -> Self {
+        let bytes = content.as_bytes();
+        let mut saw_crlf = false;
+
+        for (index, byte) in bytes.iter().enumerate() {
+            if *byte == b'\n' {
+                if index == 0 || bytes[index - 1] != b'\r' {
+                    return Self::Lf;
+                }
+                saw_crlf = true;
+            }
+        }
+
+        if saw_crlf {
+            Self::CrLf
+        } else {
+            Self::Lf
+        }
+    }
+
+    fn apply(self, content: String) -> String {
+        match self {
+            Self::Lf => content,
+            Self::CrLf => {
+                let mut converted = String::with_capacity(content.len());
+                for ch in content.chars() {
+                    if ch == '\n' && !converted.ends_with('\r') {
+                        converted.push('\r');
+                    }
+                    converted.push(ch);
+                }
+                converted
+            }
+        }
+    }
+}
+
+fn format_debug(
+    content: &str,
+    typstyle: &Typstyle,
+    args: &DebugArgs,
+    line_ending: LineEnding,
+) -> FormatResult {
     let source = Source::detached(content);
     let root = source.root();
     if args.ast {
@@ -235,6 +291,7 @@ fn format_debug(content: &str, typstyle: &Typstyle, args: &DebugArgs) -> FormatR
     let Ok(res) = f.render() else {
         return FormatResult::Erroneous;
     };
+    let res = line_ending.apply(res);
 
     if args.timing {
         println!("Formatting completed in {:?}", start_time.elapsed());
