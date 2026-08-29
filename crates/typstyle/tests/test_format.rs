@@ -181,7 +181,7 @@ fn test_crlf_file_output_remains_lf() {
 }
 
 #[test]
-fn test_mixed_line_endings_normalize_to_lf() {
+fn test_mixed_line_endings_fall_back_to_lf_output() {
     let mut space = Workspace::new();
     space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1\n");
 
@@ -194,6 +194,63 @@ fn test_mixed_line_endings_normalize_to_lf() {
     ");
 
     assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\n#let b = 1\n");
+}
+
+#[test]
+fn test_mixed_crlf_and_cr_fall_back_to_lf_output() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", b"#let a  =  0\r\n#let b  =  1\r");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\n#let b = 1\n");
+}
+
+#[test]
+fn test_crlf_multiline_literals_preserve_line_endings() {
+    let mut space = Workspace::new();
+    space.write_tracked(
+        "a.typ",
+        b"#let string  =  \"a\r\nb\"\r\n#let raw  =  ```a\r\nb```\r\n",
+    );
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(
+        space.read_bytes("a.typ"),
+        b"#let string = \"a\r\nb\"\r\n#let raw = ```a\r\nb```\r\n"
+    );
+}
+
+#[test]
+fn test_non_ascii_newline_in_string_is_not_rewritten() {
+    let mut space = Workspace::new();
+    space.write_tracked("a.typ", "#let value  =  \"a\u{2028}b\"\r\n");
+
+    typstyle_cmd_snapshot!(space.cli().args(["a.typ", "--inplace"]), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    assert_eq!(
+        space.read_bytes("a.typ"),
+        "#let value = \"a\u{2028}b\"\r\n".as_bytes()
+    );
 }
 
 #[test]
