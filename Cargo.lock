@@ -4361,6 +4361,7 @@ dependencies = [
  "prettyless",
  "rustc-hash",
  "serde",
+ "serde_json",
  "smallvec",
  "thiserror",
  "typst-syntax",

@@ -101,6 +101,9 @@ typstyle --wrap-text=fill file.typ
 
 # Place each sentence on its own line
 typstyle --wrap-text=sentence file.typ
+
+# Place each sentence on its own line, and wrap long sentences to the line width
+typstyle --wrap-text=fill-sentence file.typ
 ```
 
 = Debug Options

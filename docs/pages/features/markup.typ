@@ -50,6 +50,21 @@ When text wrapping is enabled with `--wrap-text`, Typstyle intelligently wraps l
 /// typstyle: wrap_mode=fill, max_width=30
 Let's say you have a long text that needs to be wrapped in the markup. This is a very long sentence.
 ```
+
+== Wrapping Modes
+
+`--wrap-text` accepts four modes:
+
+- `none` (default): leave line breaks alone.
+- `fill`: reflow prose to fill the line width.
+- `sentence`: start each sentence on its own line, leaving line structure otherwise untouched.
+- `fill-sentence`: start each sentence on its own line *and* wrap long sentences to the line width.
+
+```typst
+/// typstyle: wrap_mode=fill-sentence, max_width=30
+Let's say you have a long text that needs to be wrapped in the markup. This is a very long sentence.
+```
+
 == Wrapping Rules
 
 Typstyle applies specific wrapping logic based on node types:

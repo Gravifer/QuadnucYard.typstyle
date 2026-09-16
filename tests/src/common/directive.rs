@@ -69,6 +69,7 @@ pub fn parse_directives(content: &str) -> Result<Options> {
                 config.wrap_mode = match value {
                     Some("false") | Some("none") => WrapMode::None,
                     Some("sentence") => WrapMode::Sentence,
+                    Some("fill-sentence") => WrapMode::FillSentence,
                     _ => WrapMode::Fill,
                 };
                 config.collapse_markup_spaces |= config.wrap_mode != WrapMode::None;
@@ -169,6 +170,21 @@ mod tests {
                 ..Default::default()
             }
         );
+    }
+
+    #[test]
+    fn parse_wrap_text_modes() {
+        for (value, expected) in [
+            ("none", WrapMode::None),
+            ("false", WrapMode::None),
+            ("fill", WrapMode::Fill),
+            ("sentence", WrapMode::Sentence),
+            ("fill-sentence", WrapMode::FillSentence),
+        ] {
+            let content = format!("/// typstyle: wrap-text={value}\n");
+            let options = parse_directives(&content).unwrap();
+            assert_eq!(options.config.wrap_mode, expected, "for value {value}");
+        }
     }
 
     #[test]

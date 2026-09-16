@@ -87,6 +87,7 @@ To show before/after formatting examples automatically, use the `render-examples
 - `max_width=N` - Set line width for this example
 - `wrap_mode=fill` - Wrap text to the configured width
 - `wrap_mode=sentence` - Place each sentence on its own line
+- `wrap_mode=fill-sentence` - Place each sentence on its own line and wrap long sentences
 - See the embedded typstyle documentation for all available options
 
 The system automatically:

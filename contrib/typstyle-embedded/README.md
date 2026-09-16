@@ -54,7 +54,7 @@ This follows the defaults of the Rust struct. The fields and values are subject 
 )
 ```
 
-`wrap_mode` accepts `"none"`, `"fill"`, or `"sentence"`.
+`wrap_mode` accepts `"none"`, `"fill"`, `"sentence"`, or `"fill-sentence"`.
 
 ## Error Handling
 

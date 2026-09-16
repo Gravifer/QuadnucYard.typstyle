@@ -29,6 +29,8 @@ pub enum WrapMode {
     Fill,
     /// Place each sentence on its own line.
     Sentence,
+    /// Place each sentence on its own line, and wrap long sentences to the line width.
+    FillSentence,
 }
 
 impl Default for Config {
@@ -76,5 +78,23 @@ impl Config {
     pub fn with_wrap_mode(mut self, wrap_mode: WrapMode) -> Self {
         self.wrap_mode = wrap_mode;
         self
+    }
+}
+
+#[cfg(all(test, feature = "serde"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wrap_mode_serde_round_trips_through_kebab_case() {
+        for (mode, json) in [
+            (WrapMode::None, "\"none\""),
+            (WrapMode::Fill, "\"fill\""),
+            (WrapMode::Sentence, "\"sentence\""),
+            (WrapMode::FillSentence, "\"fill-sentence\""),
+        ] {
+            assert_eq!(serde_json::to_string(&mode).unwrap(), json);
+            assert_eq!(serde_json::from_str::<WrapMode>(json).unwrap(), mode);
+        }
     }
 }

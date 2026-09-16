@@ -43,7 +43,7 @@ impl<'a> PrettyPrinter<'a> {
 /// except before tokens that can be parsed as enum markers, where we use a hard space.
 ///
 /// See: https://github.com/typst/typst/blob/8ace67d942a4b8c6b9d95b73b3a39f5d0259c7b2/crates/typst-syntax/src/lexer.rs#L479-L488
-fn wrap_text<'a>(arena: &'a Arena<'a>, text: &'a str) -> ArenaDoc<'a> {
+pub(super) fn wrap_text<'a>(arena: &'a Arena<'a>, text: &'a str) -> ArenaDoc<'a> {
     let mut tokens = text.split_ascii_whitespace();
     // start with first token (or nil() if empty)
     let mut doc = if let Some(first) = tokens.next() {

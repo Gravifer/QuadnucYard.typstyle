@@ -62,6 +62,7 @@ impl StyleArgs {
                 WrapTextMode::None => WrapMode::None,
                 WrapTextMode::Fill => WrapMode::Fill,
                 WrapTextMode::Sentence => WrapMode::Sentence,
+                WrapTextMode::FillSentence => WrapMode::FillSentence,
             },
             ..Default::default()
         }

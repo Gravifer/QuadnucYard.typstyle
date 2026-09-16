@@ -111,6 +111,16 @@ fn test_wrap_text_modes() {
 
     ----- stderr -----
     ");
+    typstyle_cmd_snapshot!(space.cli().args(["-c=34", "--wrap-text=fill-sentence"]).pass_stdin(stdin), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    First sentence has extra spaces
+    and enough words to wrap.
+    Second sentence follows.
+
+    ----- stderr -----
+    ");
 }
 
 #[test]
@@ -125,6 +135,23 @@ fn test_wrap_text_does_not_consume_input_path() {
     First sentence. Second sentence.
 
     ----- stderr -----
+    ");
+}
+
+#[test]
+fn test_wrap_text_rejects_invalid_value() {
+    let space = Workspace::new();
+
+    typstyle_cmd_snapshot!(space.cli().args(["--wrap-text=bogus"]).pass_stdin(""), @r"
+    success: false
+    exit_code: 2
+    ----- stdout -----
+
+    ----- stderr -----
+    error: invalid value 'bogus' for '--wrap-text[=<WRAP_TEXT>]'
+      [possible values: none, fill, sentence, fill-sentence]
+
+    For more information, try '--help'.
     ");
 }
 
