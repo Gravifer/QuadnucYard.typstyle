@@ -56,7 +56,10 @@ impl<'a> PrettyPrinter<'a> {
                 // A closing quote stays glued to the sentence it terminates, so the pending break
                 // survives until the following whitespace.
                 let defer_break = sentence_breaks && is_sentence_closer(node);
-                let leading_break = if pending_sentence_break && !defer_break {
+                let leading_break = if pending_sentence_break
+                    && !defer_break
+                    && !cannot_break_before_markup(node)
+                {
                     self.arena.hardline()
                 } else {
                     self.arena.nil()
@@ -199,7 +202,9 @@ fn convert_text_sentence_split<'a>(
     let mut previous_was_abbreviation = false;
 
     for end in boundaries {
-        let sentence = text[start..end].trim();
+        // Typst can keep semantic Unicode whitespace in text leaves, so only trim ASCII
+        // whitespace introduced around sentence segments.
+        let sentence = text[start..end].trim_ascii();
         if !sentence.is_empty() {
             if !first {
                 doc += if cannot_break_before_text(sentence) {
@@ -219,7 +224,11 @@ fn convert_text_sentence_split<'a>(
             } else {
                 arena.text(sentence)
             };
-            if end == text.len() && text.ends_with(' ') {
+            let sentence_ended = source_ends_with_sentence(sentence);
+            let has_trailing_space = end == text.len() && text.ends_with(' ');
+            // A space before a link is part of the preceding text leaf. When that text ends a
+            // sentence, let the caller emit the pending hardline instead of adding a softline too.
+            if has_trailing_space && !(fill && sentence_ended) {
                 doc += if fill {
                     arena.softline()
                 } else {
@@ -228,7 +237,7 @@ fn convert_text_sentence_split<'a>(
             }
             first = false;
             previous_was_abbreviation = is_common_abbreviation(sentence);
-            ended_sentence = source_ends_with_sentence(sentence);
+            ended_sentence = sentence_ended;
         }
         start = end;
     }
@@ -530,6 +539,29 @@ mod tests {
         ] {
             assert_eq!(format_fill_sentences(input, 80), format!("{input}\n"));
         }
+    }
+
+    #[test]
+    fn fill_sentence_mode_preserves_adjacent_line_sensitive_markup() {
+        for input in ["*Done.*- prose", "*Done.*+ prose", "*Done.*= prose"] {
+            assert_eq!(format_fill_sentences(input, 80), format!("{input}\n"));
+        }
+    }
+
+    #[test]
+    fn fill_sentence_mode_preserves_non_breaking_space() {
+        assert_eq!(
+            format_fill_sentences("Hello\u{a0}world.", 80),
+            "Hello\u{a0}world.\n"
+        );
+    }
+
+    #[test]
+    fn fill_sentence_mode_uses_one_break_before_link() {
+        assert_eq!(
+            format_fill_sentences("A sentence. https://example.com", 11),
+            "A sentence.\nhttps://example.com\n"
+        );
     }
 
     #[test]
