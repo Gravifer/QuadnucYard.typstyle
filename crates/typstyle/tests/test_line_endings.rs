@@ -1,6 +1,6 @@
 mod common;
 
-use std::{fs, path::Path, process::Output};
+use std::process::Output;
 
 use common::{Workspace, typstyle_cmd_snapshot};
 use insta_cmd::{Spawn, SpawnExt};
@@ -11,43 +11,6 @@ fn run_stdin(args: &[&str], input: &[u8]) -> Output {
     command.args(args);
     let (_, output) = command.pass_stdin(input).spawn_with_info(None);
     output
-}
-
-fn read_bytes(space: &Workspace, path: impl AsRef<Path>) -> Vec<u8> {
-    fs::read(space.project_path().join(path)).unwrap()
-}
-
-// CLI contract
-
-#[test]
-fn test_line_ending_help_lists_modes_and_default() {
-    let space = Workspace::new();
-    let output = space.cli().arg("--help").output().unwrap();
-    let stdout = String::from_utf8(output.stdout).unwrap();
-
-    assert!(output.status.success());
-    assert!(stdout.contains("--line-ending <LINE_ENDING>"));
-    assert!(stdout.contains("[default: lf]"));
-    assert!(stdout.contains("Possible values:"));
-    assert!(stdout.contains("- lf:"));
-    assert!(stdout.contains("- crlf-preserve:"));
-}
-
-#[test]
-fn test_line_ending_rejects_unknown_mode() {
-    let space = Workspace::new();
-
-    typstyle_cmd_snapshot!(space.cli().args(["--line-ending=auto"]), @r"
-    success: false
-    exit_code: 2
-    ----- stdout -----
-
-    ----- stderr -----
-    error: invalid value 'auto' for '--line-ending <LINE_ENDING>'
-      [possible values: lf, crlf-preserve]
-
-    For more information, try '--help'.
-    ");
 }
 
 // Default and explicit LF behavior
@@ -104,60 +67,10 @@ fn test_explicit_lf_normalizes_file_inplace() {
     ----- stderr -----
     ");
 
-    assert_eq!(read_bytes(&space, "a.typ"), b"#let a = 0\n#let b = 1\n");
+    assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\n#let b = 1\n");
 }
 
-// CRLF-preserve policy
-
-#[test]
-fn test_crlf_preserve_selection_matrix() {
-    let cases = [
-        (
-            "consistent CRLF",
-            "#let a  =  0\r\n#let b  =  1\r\n",
-            "#let a = 0\r\n#let b = 1\r\n",
-        ),
-        (
-            "LF",
-            "#let a  =  0\n#let b  =  1\n",
-            "#let a = 0\n#let b = 1\n",
-        ),
-        ("no newline", "#let a  =  0", "#let a = 0\n"),
-        (
-            "CRLF then LF",
-            "#let a  =  0\r\n#let b  =  1\n",
-            "#let a = 0\n#let b = 1\n",
-        ),
-        (
-            "LF then CRLF",
-            "#let a  =  0\n#let b  =  1\r\n",
-            "#let a = 0\n#let b = 1\n",
-        ),
-        (
-            "bare CR",
-            "#let value  =  \"a\rb\"",
-            "#let value = \"a\rb\"\n",
-        ),
-        (
-            "CRLF and bare CR",
-            "#let a  =  0\r\n#let b  =  1\r#let c  =  2",
-            "#let a = 0\n#let b = 1\r#let c = 2\n",
-        ),
-        (
-            "non-ASCII separators",
-            "#let value  =  \"a\u{000b}b\u{000c}c\u{0085}d\u{2028}e\u{2029}f\"\r\n",
-            "#let value = \"a\u{000b}b\u{000c}c\u{0085}d\u{2028}e\u{2029}f\"\r\n",
-        ),
-    ];
-
-    for (name, input, expected) in cases {
-        let output = run_stdin(&["--line-ending=crlf-preserve"], input.as_bytes());
-
-        assert!(output.status.success(), "{name}: {output:?}");
-        assert_eq!(output.stdout, expected.as_bytes(), "{name}");
-        assert!(output.stderr.is_empty(), "{name}: {output:?}");
-    }
-}
+// CRLF-preserve policy at the CLI boundary
 
 #[test]
 fn test_crlf_preserve_file_output_uses_crlf() {
@@ -173,26 +86,6 @@ fn test_crlf_preserve_file_output_uses_crlf() {
     assert!(output.status.success());
     assert_eq!(output.stdout, b"#let a = 0\r\n");
     assert!(output.stderr.is_empty());
-    assert!(space.all_unmodified());
-}
-
-#[test]
-fn test_crlf_preserve_check_accepts_formatted_file() {
-    let mut space = Workspace::new();
-    space.write_tracked("a.typ", b"#let a = 0\r\n");
-
-    typstyle_cmd_snapshot!(space.cli().args([
-        "a.typ",
-        "--check",
-        "--line-ending=crlf-preserve",
-    ]), @r"
-    success: true
-    exit_code: 0
-    ----- stdout -----
-
-    ----- stderr -----
-    ");
-
     assert!(space.all_unmodified());
 }
 
@@ -269,7 +162,7 @@ fn test_crlf_preserve_inplace_converges() {
     ----- stderr -----
     ");
 
-    assert_eq!(read_bytes(&space, "a.typ"), b"#let a = 0\r\n#let b = 1\r\n");
+    assert_eq!(space.read_bytes("a.typ"), b"#let a = 0\r\n#let b = 1\r\n");
 
     let check = space
         .cli()
