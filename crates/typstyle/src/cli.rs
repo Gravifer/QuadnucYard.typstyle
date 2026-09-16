@@ -91,7 +91,7 @@ pub struct StyleArgs {
     #[arg(long, default_value_t = false, global = true)]
     pub no_reorder_import_items: bool,
 
-    /// Text wrapping mode: none (default), fill (wrap to line width), or sentence (one per line).
+    /// Text wrapping mode: none (default), fill (wrap to line width), sentence (one per line), or fill-sentence (both).
     #[arg(
         long,
         value_enum,
@@ -114,6 +114,8 @@ pub enum WrapTextMode {
     Fill,
     /// Place each sentence on its own line
     Sentence,
+    /// Place each sentence on its own line, wrapping long sentences to the line width
+    FillSentence,
 }
 
 #[derive(Args)]

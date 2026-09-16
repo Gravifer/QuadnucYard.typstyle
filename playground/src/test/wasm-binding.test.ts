@@ -21,6 +21,12 @@ describe("WASM Binding Tests", () => {
         wrapMode: "sentence",
       }).wrap_mode,
     ).toBe("sentence");
+    expect(
+      formatOptionsToConfig({
+        ...DEFAULT_FORMAT_OPTIONS,
+        wrapMode: "fill-sentence",
+      }).wrap_mode,
+    ).toBe("fill-sentence");
   });
 
   // Test data

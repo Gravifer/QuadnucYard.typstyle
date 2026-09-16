@@ -166,6 +166,7 @@ export function SettingsPanel({
           <option value="none">None</option>
           <option value="fill">Fill</option>
           <option value="sentence">Sentence</option>
+          <option value="fill-sentence">Fill + Sentence</option>
         </select>
       </div>
 

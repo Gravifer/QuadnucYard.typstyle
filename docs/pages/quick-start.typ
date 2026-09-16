@@ -129,8 +129,13 @@ typstyle --no-reorder-import-items file.typ
 # Wrap text to the configured line width
 typstyle --wrap-text file.typ
 
-# Place each sentence on its own line
+# Start a new line after the end of each sentence,
+# but don't re-flow sentences manually broken across lines
 typstyle --wrap-text=sentence file.typ
+
+# Both: re-flow text to wrap at the line width, but also start
+# a new line after each sentence
+typstyle --wrap-text=fill-sentence file.typ
 ```
 
 = Integration Examples
